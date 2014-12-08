@@ -1,10 +1,10 @@
 
 all:
-	gcc lightorgan.c -lasound -lwiringPi -g -Wall -o lightorgan
+	gcc light.c -lasound -lwiringPi -g -Wall -o light
 
 inst: all
-	sudo cp lightorgan /usr/sbin
-	sudo chmod 700 /usr/sbin/lightorgan
-	sudo chown root /usr/sbin/lightorgan
+	sudo cp light /usr/sbin
+	sudo chmod 700 /usr/sbin/light
+	sudo chown root /usr/sbin/light
 
 
