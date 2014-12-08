@@ -6,26 +6,12 @@
 static snd_seq_t *seq_handle;
 static int in_port;
 
-////////////////////////////////////////////////////////////////////////////
-//Example setup: There are 12 melody channels. Each index is mapped to 
-// the corresponding Wiring Pi valued channel in the array below.
-//
-//////////////////////////////////////////////////////////////////
 
 int pinMapping[] = {
-0, //0
-1, //1
-2, //2
-3, //3
-4, //4
-5, //5
-6, //6
-7, //7
-8, //8
-9, //9
-10,//10
-11 //11
-};
+0,
+1,
+2,
+3};
 
 #define TOTAL_PINS sizeof(pinMapping) / sizeof(int)
 #define THRUPORTCLIENT 14
@@ -39,11 +25,11 @@ void midi_open(void)
     in_port = snd_seq_create_simple_port(seq_handle, "listen:in",
                       SND_SEQ_PORT_CAP_WRITE|SND_SEQ_PORT_CAP_SUBS_WRITE,
                       SND_SEQ_PORT_TYPE_APPLICATION);
- 
+
     if( snd_seq_connect_from(seq_handle, in_port, THRUPORTCLIENT, THRUPORTPORT) == -1) {
        perror("Can't connect to thru port");
        exit(-1);
-    } 
+    }
 
 }
 
@@ -74,7 +60,9 @@ void clearPinNotes() {
 }
 
 void myDigitalWrite(int pinIdx, int val) {
-     val  ?  printf("%i (%i) ON\n", pinIdx, pinMapping[pinIdx])  : printf("%i (%i) OFF\n", pinIdx, pinMapping[pinIdx]);
+     val
+        ?  printf("%i (%i) ON\n", pinIdx, pinMapping[pinIdx])
+        : printf("%i (%i) OFF\n", pinIdx, pinMapping[pinIdx]);
      digitalWrite( pinMapping[pinIdx], val );
 }
 
@@ -93,22 +81,22 @@ void clearPinsState() {
 
 void pinsOn() {
    int i;
-   for(i=0; i< TOTAL_PINS; i++) { 
-      myDigitalWrite(i, 1); 
+   for(i=0; i< TOTAL_PINS; i++) {
+      myDigitalWrite(i, 1);
    }
 }
 
 void pinsOff() {
    int i;
    for(i=0; i< TOTAL_PINS; i++) {
-      myDigitalWrite(i, 1); 
+      myDigitalWrite(i, 1);
    }
 }
 
 
 void setChannelInstrument(int channel, int instr) {
   printf("setting channel %i to instrument %i\n", channel, instr);
-  playChannels[channel] = instr;  
+  playChannels[channel] = instr;
 }
 
 
@@ -140,56 +128,43 @@ int choosePinIdx(int note, int channel) {
 
 void midi_process(snd_seq_event_t *ev)
 {
-    
-    //If this event is a PGMCHANGE type, it's a request to map a channel to an instrument
     if( ev->type == SND_SEQ_EVENT_PGMCHANGE )  {
-       //printf("PGMCHANGE: channel %2d, %5d, %5d\n", ev->data.control.channel, ev->data.control.param,  ev->data.control.value);
-
        //Clear pins state, this is probably the beginning of a new song
        clearPinsState();
-       
        setChannelInstrument(ev->data.control.channel, ev->data.control.value);
     }
 
     //Note on/off event
-    else if ( ((ev->type == SND_SEQ_EVENT_NOTEON)||(ev->type == SND_SEQ_EVENT_NOTEOFF)) ) {
-        
-  
+    else if ( ((ev->type == SND_SEQ_EVENT_NOTEON)
+            || (ev->type == SND_SEQ_EVENT_NOTEOFF)) ) {
         //choose the output pin based on the pitch of the note
         int pinIdx = choosePinIdx(ev->data.note.note, ev->data.note.channel);
 
-
-        if(!isPercussionChannel(ev->data.note.channel) ) { 
+        if(!isPercussionChannel(ev->data.note.channel) ) {
            int isOn = 1;
            //Note velocity == 0 means the same thing as a NOTEOFF type event
            if( ev->data.note.velocity == 0 || ev->type == SND_SEQ_EVENT_NOTEOFF) {
               isOn = 0;
            }
 
-
            //If pin is set to be turned on
            if( isOn ) {
-              //If pin is currently available to play a note, or if currently playing channel can be overriden due to higher priority channel
+              // If pin is currently available to play a note, or if
+              // currently playing channel can be overriden due to higher priority channel
               if( pinNotes[pinIdx] == -1 || pinChannels[pinIdx] > ev->data.note.channel )  {
-                      
-                 if( (pinChannels[pinIdx] > ev->data.note.channel ) && pinNotes[pinIdx] != -1)  {
-                    //printf("OVERRIDING CHANNEL %i for %i\n", pinChannels[pinIdx], ev->data.note.channel);
-                 }
                  //Write to the pin, save the note to pinNotes
-                 //printf("Pin %i - %s %i %i \n", pinIdx, isOn ? "on" : "off", ev->data.note.note, ev->data.note.channel);       
-                 myDigitalWrite(pinIdx, 1); 
+                 myDigitalWrite(pinIdx, 1);
                  pinNotes[pinIdx] = ev->data.note.note;
                  pinChannels[pinIdx] =  ev->data.note.channel;
               }
            }
-           
+
            //Pin is to be turned off
            else {
               //If this is the note that turned the pin on..
               if( pinNotes[pinIdx] == ev->data.note.note && pinChannels[pinIdx] == ev->data.note.channel ) {
                  //Write to the pin, indicate that pin is available
-                 //printf("Pin %i - %s %i %i \n", pinIdx, isOn ? "on" : "off", ev->data.note.note, ev->data.note.channel);       
-                 myDigitalWrite(pinIdx, 0); 
+                 myDigitalWrite(pinIdx, 0);
                  pinNotes[pinIdx] = -1;
                  pinChannels[pinIdx] = INT_MAX;
               }
@@ -197,10 +172,9 @@ void midi_process(snd_seq_event_t *ev)
        }
 
     }
-    
+
     else {
        printf("Unhandled event %2d\n", ev->type);
-   
     }
 
     snd_seq_free_event(ev);
@@ -214,7 +188,7 @@ int main()
     if( wiringPiSetup() == -1) {
       exit(1);
     }
-   
+
     //Setup all the pins to use OUTPUT mode
     int i=0;
     for(i=0; i< TOTAL_PINS; i++) {
